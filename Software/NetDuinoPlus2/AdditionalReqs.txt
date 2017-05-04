@@ -1,0 +1,2 @@
+.NET Framework 3.5 (outdated, but required.  See http://forums.netduino.com/index.php?/topic/913-build-error-0x80131700/)
+VS Express 2013 is REQUIRED.  Won't work in higher editions because of the plugin compatibility.

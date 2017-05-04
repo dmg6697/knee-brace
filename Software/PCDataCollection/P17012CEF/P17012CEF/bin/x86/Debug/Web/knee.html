@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <script src="jquery-3.1.1.js"></script>
+    <script src="main.js"></script>
+    
+    <title>Knee Position</title>
+</head>
+<body>
+    <div id="loading">
+        <h1 style="color:blue; text-align:center; vertical-align:central;">Loading...</h1>
+    </div>
+    <div id="settings">
+        <div class="select-group">
+            <label>Serial Port: <span style="color:red;" id="connectionStatus">Disconnected</span></label>
+            <select id="COMPort">
+                
+            </select>
+            <button type="button" id="tryConnBtn">Test Connection</button>
+        </div>
+        <div class="input-group">
+            <label>Transmit Frequency</label>
+            <input id="Frequency" type="number" placeholder="Transmit Frequency" />
+        </div>
+        <div class="input-group">
+            <label>Pounds Per Inch</label>
+            <input id="SpringK" type="number" placeholder="Pounds Per Inch" />
+        </div>
+        <div class="input-group">
+            <button id="display_btn">Close Settings</button> <button id="configure_btn">Save Settings</button>
+        </div>
+    </div>
+    <div id="content">
+        <canvas id="kp_canvas"></canvas>
+        <button id="settings_btn">Settings</button>
+    </div>
+</body>
+</html>
