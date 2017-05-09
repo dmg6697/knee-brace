@@ -78,6 +78,10 @@ function ShowSettings() {
     $('#settings').show();
 }
 
+var steps = 0;
+var step_zero = true;
+var step_extend = false;
+
 function Redraw()
 {
 	var $window = $(window);
@@ -107,6 +111,22 @@ function Redraw()
 	    force_history.shift();
 	}
 	DrawTimeForce(ctx, w_knee, h / 2, 0, h - 10);
+
+    // incremental step check
+    // if the force total is greater than 30% then it's "extended"
+    // if the force total is less than 30% then it's not extended"
+    // if it changes from extended to zero then we count a step and reset the variables
+	if (force >= 30 && step_zero)
+	{
+	    step_extend = true;
+	    step_zero = false;
+	}
+	else if (force < 30 && step_extend)
+	{
+	    step_extend = false;
+	    step_zero = true;
+	    steps++;
+	}
 
     // draw force text
 	DrawForceText(ctx, force_text, w_knee / 2, h / 2 + 30);
@@ -241,6 +261,7 @@ function connectionChanged(isConnected, portNames)
         'color': isConnected ? 'green' : 'red',
     }).text(isConnected ? 'Connected' : 'Not connected');
 
+    alert('test');
     if (!isConnected)
     {
         ShowSettings();

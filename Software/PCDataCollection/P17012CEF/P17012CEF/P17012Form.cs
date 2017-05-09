@@ -91,10 +91,6 @@ namespace P17012CEF
             _browser.RegisterAsyncJsObject("csharp", Program.jsc);
 
             _browser.IsBrowserInitializedChanged += _browser_IsBrowserInitializedChanged; // can't check the IsBrowserInitialized variable without the event or the variable may not be correct
-
-            // serial port connection
-            Program.btc.Connected += Btc_Connected;
-            Program.btc.ConnectAsync();
         }
 
         private void Btc_Connected(bool IsConnected, string[] portNames)
@@ -123,6 +119,10 @@ namespace P17012CEF
                 /// subscribe to bluetooth messages
                 Program.btc.MessageReceived += Btc_MessageReceived;
                 Program.jsc.MessageReceived += Jsc_MessageReceived;
+
+                // serial port connection
+                Program.btc.Connected += Btc_Connected;
+                Program.btc.ConnectAsync();
             }
         }
 
@@ -159,6 +159,9 @@ namespace P17012CEF
                             int k = 0;
                             int.TryParse(js["k"].ToString(), out k);
                             ADCInterpreter.LbsPerInch = k;
+                            break;
+                        default:
+                            Console.WriteLine("Unrecognized command: {0}", obj);
                             break;
                     }
                 } catch (Exception e)

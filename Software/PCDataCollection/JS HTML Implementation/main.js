@@ -1,18 +1,86 @@
 var flexion = 0;
 var orientation = Math.PI;
 var force = 50;
+var force_text = 0;
 var force_max = 100;
 var force_min = 0;
 var graph_width = 20;
+var force_history = [];
 
-$(document).ready(function() {	
+$(document).ready(function () {
+    ShowLoading();
+
 	$(window).resize(function()
 	{
 		Redraw();
 	});
 
+	$('.input-group label').hide();
+	$('input, select').css({ width: '100%', 'margin-bottom': '10px' });
+	$('button').css({ 'margin-bottom': '10px' });
+	$('.input-group input').on('input', function () {
+	    var $this = $(this);
+	    if ($this.val() != "") {
+	        $this.parent().find('label').show({ duration: 200 });
+	    } else {
+	        $this.parent().find('label').hide();
+	    }
+	});
+
+	$('#settings_btn').click(ShowSettings);
+	$("#content_btn").click(ShowContent);
+
+	$('select').on('change', function () {
+	    $('#connectionStatus').css({ color: "black" }).text('Untested');
+	});
+
+	$('#configure_btn').click(function () {
+	    InvokeCSharp({ type: 'settings', f: $('#Frequency').val(), k: $('#SpringK').val() });
+	});
+
+	$('#tryConnBtn').click(function () {
+	    InvokeCSharp({ type: 'connection', port: $('#COMPort').val() });
+	    $(this).attr('disabled', 'disabled');
+	});
+	
 	Redraw();
 });
+
+function contentVisibleChanged(show) {
+    var btn = $('#settings_btn');
+    var content = $('#content');
+    var settings = $('#settings');
+
+    if (show) {
+        content.hide();
+        settings.show();
+        btn.text('Display');
+    }
+    else {
+        content.show();
+        settings.hide();
+        btn.text('Settings');
+    }
+}
+
+function ShowLoading() {
+    $('#content, #settings').hide();
+    $("#loading").show();
+}
+
+function ShowContent() {
+    $('#loading, #settings').hide();
+    $("#content").show();
+}
+
+function ShowSettings() {
+    $('#loading, #content').hide();
+    $('#settings').show();
+}
+
+var steps = 0;
+var step_zero = true;
+var step_extend = false;
 
 function Redraw()
 {
@@ -26,8 +94,8 @@ function Redraw()
 
     // draw border and knee position
 	var w_knee = w - graph_width - 3;
-	DrawBorder(ctx, w_knee, h);
-	DrawKnee(ctx, w_knee, h, flexion, orientation);
+	DrawBorder(ctx, w_knee, h/2);
+	DrawKnee(ctx, w_knee, h / 2, flexion, orientation);
 
     // draw force graph (instant)
 	ctx.translate(w_knee, 10); // top left = new coords
@@ -35,6 +103,58 @@ function Redraw()
 	DrawIForce(ctx, graph_width - 3, h, force);
 	ctx.translate(-w, -10); // restore old coords
 	ctx.moveTo(0, 0);
+
+    // draw force time graph
+	force_history.push(force);
+	if (force_history.length > 20)
+	{
+	    force_history.shift();
+	}
+	DrawTimeForce(ctx, w_knee, h / 2, 0, h - 10);
+
+    // incremental step check
+    // if the force total is greater than 30% then it's "extended"
+    // if the force total is less than 30% then it's not extended"
+    // if it changes from extended to zero then we count a step and reset the variables
+	if (force >= 30 && step_zero)
+	{
+	    step_extend = true;
+	    step_zero = false;
+	}
+	else if (force < 30 && step_extend)
+	{
+	    step_extend = false;
+	    step_zero = true;
+	    steps++;
+	}
+
+    // draw force text
+	DrawForceText(ctx, force_text, w_knee / 2, h / 2 + 30);
+}
+
+function DrawTimeForce(ctx, w, h, x, y)
+{
+    // relative move
+    ctx.translate(x, y);
+    var w_unit = w / force_history.length; // get unit length
+    var h_unit = h / 100;
+
+    // assemble points & connect them
+    ctx.beginPath();
+
+    for (var i = 0; i < force_history.length; i++)
+    {
+        ctx.lineTo(w_unit * i, h_unit * -1 * force_history[i]);
+    }
+    ctx.stroke();
+
+    // move back
+    ctx.translate(-x, -y);
+}
+
+function roundTo(num, places)
+{
+    return +(Math.round(num + "e+" + places) + "e-" + places);
 }
 
 function DrawBorder(ctx, width, height)
@@ -96,13 +216,63 @@ function DrawKnee(ctx, width, height, flexion, orientation)
 	ctx.translate(-x, -y); // return to top left
 }
 
-function Update(iforce, iflexion, iorientation, iforce_max, iforce_min)
+function DrawForceText(ctx, forceLbs, x, y)
 {
-    force = iforce;
+    ctx.beginPath();
+    ctx.font = "15px Georgia";
+    ctx.fillText("Force (ft-lbs): " + roundTo(forceLbs, 2), x, y);
+    ctx.stroke();
+    ctx.beginPath();
+}
+
+function Update(iforce, iflexion, iorientation, pforce)
+{
+    force = pforce;
     flexion = iflexion;
     orientation = iorientation;
-    force_max = iforce_max;
-    force_min = iforce_min;
+    force_text = iforce;
 
     Redraw();
+}
+
+function InvokeCSharp(event)
+{
+    csharp.raiseEvent(event);
+}
+
+function connectionChanged(isConnected, portNames)
+{
+    var ports = portNames.split(',');
+
+    var select = $('#COMPort');
+    var option = "";
+    for (var i = 0; i < ports.length; i++) {
+        option += "<option value='" + ports[i] + "'>" + ports[i] + "</option>";
+    }
+    select.html(option);
+
+    var trybtn = $('#tryConnBtn');
+    if (trybtn.attr('disabled') == 'disabled')
+    {
+        trybtn.removeAttr('disabled');
+    }
+    
+    $('#connectionStatus').css({
+        'color': isConnected ? 'green' : 'red',
+    }).text(isConnected ? 'Connected' : 'Not connected');
+
+    alert('test');
+    if (!isConnected)
+    {
+        ShowSettings();
+    } else {
+        ShowContent();
+    }
+}
+
+function settingsUpdated(updated)
+{
+    if (!updated) {
+        alert('bad update');
+    }
 }
