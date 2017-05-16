@@ -8,6 +8,8 @@ using System.Threading;
 
 namespace P17012CEF
 {
+    // TODO: Implement error/disconnect handling and communicate this to the other layers.
+    // TODO: Better separate communications and calculations.  Determine whether the JS layer or the C# layer should be doing the business logic.  Thoughts:  C# layer is like the controller, JS is the view and the communications layer provides the model/data.
     public class BluetoothCommunicator
     {
         private static BluetoothCommunicator _instance;
@@ -87,6 +89,10 @@ namespace P17012CEF
             }
         }
 
+        /// <summary>
+        /// Spawns off a task to connect to the serial port so that the form load doesn't have to wait on a connection status.
+        /// </summary>
+        /// <param name="COMPort"></param>
         public void ConnectAsync(string COMPort = "")
         {
             Task.Factory.StartNew(delegate {
@@ -116,7 +122,12 @@ namespace P17012CEF
             }
         }
 
-
+        /// <summary>
+        /// Synchronous connection to the serial port defined by the program or defined by the user in the JS/Winforms instance.
+        /// TODO: Implement windows level driver so that we can ask windows for the connection instead of depending on the user to tell us which serial port it's connected to.
+        /// </summary>
+        /// <param name="COMPort"></param>
+        /// <returns></returns>
         public bool Connect(string COMPort = "")
         {
             if (COMPort != "")
@@ -152,7 +163,11 @@ namespace P17012CEF
         {
             if (_sendThread != null)
             {
-                _sendThread.Abort(); // this will raise an exception
+                try
+                {
+                    _sendThread.Abort(); // this will raise an exception
+                } catch (Exception ex)
+                {}
                 _sendThread = null;
             }
             if (_port != null)
@@ -176,6 +191,7 @@ namespace P17012CEF
         {
             BTMessage msg = null;
 
+            // TODO: determine if _port needs a lock here for thread safety
             if (_port.IsOpen)
             {
                 lock (_txMsgQueue) // make sure an enqueue operation doesn't mess this dequeue up
@@ -206,6 +222,9 @@ namespace P17012CEF
             }
         }
 
+        /// <summary>
+        /// Flag to indicate whether we should expect 0x45 3 times on the serial port when we first open it (based on observation), TODO: Windows driver so we can avoid needing this or other serial port specific connection parameters/special cases.
+        /// </summary>
         private bool _firstBurst = true;
         /// <summary>
         /// Raises a MessageReceived Event when it receives a complete packet.  If a complete packet is not present, but there are enough bytes it assumes misalignment and will byte shift out until the packet is fully formed.
@@ -283,7 +302,7 @@ namespace P17012CEF
 
                     System.Threading.Thread.Sleep(_txInterval);
                 }
-            } catch (Exception ex)
+            } catch (Exception ex) // TODO: Better exception handling, what should we do in case of communciations failure?  --> Raise Connection change event?
             {
                 Console.WriteLine(ex.GetType().ToString() + ": " + ex.Message);
             }
